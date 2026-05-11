@@ -30,53 +30,74 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@asmaya.kz';
 const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
 
-// Функция отправки письма через Resend API (через https модуль Node.js)
+// Функция отправки письма через Gmail SMTP
 async function sendEmail({ to, subject, html }) {
-  console.log(`📧 Попытка отправить письмо на: ${to}, тема: ${subject}`);
-  console.log(`   FROM_EMAIL: ${FROM_EMAIL}`);
-  console.log(`   RESEND_API_KEY: ${RESEND_API_KEY ? RESEND_API_KEY.slice(0,10) + '...' : 'НЕ ЗАДАН'}`);
-  if (!RESEND_API_KEY) {
-    console.warn('⚠️  RESEND_API_KEY не задан — письмо не отправлено');
+  const GMAIL_USER = process.env.GMAIL_USER || '';
+  const GMAIL_PASS = process.env.GMAIL_PASS || '';
+  console.log(`📧 Отправка письма на: ${to}`);
+  console.log(`   GMAIL_USER: ${GMAIL_USER || 'НЕ ЗАДАН'}`);
+  if (!GMAIL_USER || !GMAIL_PASS) {
+    console.warn('⚠️  GMAIL_USER или GMAIL_PASS не заданы');
     return false;
   }
   return new Promise((resolve) => {
-    const https = require('https');
-    const body = JSON.stringify({ from: FROM_EMAIL, to, subject, html });
-    const options = {
-      hostname: 'api.resend.com',
-      path: '/emails',
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body)
+    const net = require('net');
+    const tls = require('tls');
+    const encoded = Buffer.from(`\0${GMAIL_USER}\0${GMAIL_PASS}`).toString('base64');
+    const boundary = 'boundary_asmaya_' + Date.now();
+    const rawEmail = [
+      `From: AsMaya 200PRO <${GMAIL_USER}>`,
+      `To: ${to}`,
+      `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`,
+      'MIME-Version: 1.0',
+      `Content-Type: multipart/alternative; boundary="${boundary}"`,
+      '',
+      `--${boundary}`,
+      'Content-Type: text/html; charset=UTF-8',
+      'Content-Transfer-Encoding: base64',
+      '',
+      Buffer.from(html).toString('base64'),
+      '',
+      `--${boundary}--`
+    ].join('\r\n');
+
+    let step = 0;
+    const next = (socket, msg) => {
+      const steps = [
+        () => socket.write('EHLO gmail.com\r\n'),
+        () => socket.write('AUTH PLAIN ' + encoded + '\r\n'),
+        () => socket.write('MAIL FROM:<' + GMAIL_USER + '>\r\n'),
+        () => socket.write('RCPT TO:<' + to + '>\r\n'),
+        () => socket.write('DATA\r\n'),
+        () => socket.write(rawEmail + '\r\n.\r\n'),
+        () => { socket.write('QUIT\r\n'); resolve(true); }
+      ];
+      const code = parseInt(msg);
+      if (code >= 400) {
+        console.error('❌ SMTP ошибка:', msg);
+        socket.destroy();
+        resolve(false);
+        return;
       }
+      if (step < steps.length) steps[step++]();
     };
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            console.log(`✅ Письмо отправлено на ${to}, id: ${json.id}`);
-            resolve(true);
-          } else {
-            console.error(`❌ Ошибка Resend (${res.statusCode}):`, json);
-            resolve(false);
-          }
-        } catch(e) {
-          console.error('❌ Ошибка парсинга ответа Resend:', e.message);
-          resolve(false);
-        }
+
+    const socket = tls.connect({ host: 'smtp.gmail.com', port: 465 }, () => {
+      socket.on('data', d => {
+        const msg = d.toString();
+        console.log('SMTP:', msg.trim());
+        next(socket, msg);
       });
     });
-    req.on('error', (err) => {
-      console.error('❌ Ошибка HTTPS запроса к Resend:', err.message);
+    socket.on('error', err => {
+      console.error('❌ SMTP ошибка соединения:', err.message);
       resolve(false);
     });
-    req.write(body);
-    req.end();
+    socket.setTimeout(15000, () => {
+      console.error('❌ SMTP таймаут');
+      socket.destroy();
+      resolve(false);
+    });
   });
 }
 
