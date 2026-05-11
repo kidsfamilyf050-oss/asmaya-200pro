@@ -3970,6 +3970,7 @@
       }
 
       window.authLogout = async function() {
+        sessionStorage.removeItem('payrollKZ_demo');
         await fetch('/api/logout', { method: 'POST', credentials: 'include' });
         location.reload();
       };
@@ -4042,13 +4043,14 @@
 
       window.enterDemo = function() {
         _currentUserLogin = '__demo__';
+        sessionStorage.setItem('payrollKZ_demo', '1');
         const demoUser = { login: 'ДЕМО', role: 'demo' };
         showApp(demoUser);
         document.getElementById('demoBanner').classList.add('visible');
       };
 
       window.isDemoMode = function() {
-        return _currentUserLogin === '__demo__';
+        return _currentUserLogin === '__demo__' || sessionStorage.getItem('payrollKZ_demo') === '1';
       };
 
       window.openUpgradeModal = function() {
@@ -4064,13 +4066,21 @@
       document.getElementById('authLogin').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('authPass').focus(); });
 
       // Check if already logged in (cookie-based session)
-      fetch('/api/session', { credentials: 'include' }).then(async resp => {
-        if (resp.ok) {
-          const user = await resp.json();
-          showApp(user);
-        }
-        // else stay on login screen
-      }).catch(() => {});
+      // First check demo session
+      if (sessionStorage.getItem('payrollKZ_demo') === '1') {
+        _currentUserLogin = '__demo__';
+        const demoUser = { login: 'ДЕМО', role: 'demo' };
+        showApp(demoUser);
+        document.getElementById('demoBanner').classList.add('visible');
+      } else {
+        fetch('/api/session', { credentials: 'include' }).then(async resp => {
+          if (resp.ok) {
+            const user = await resp.json();
+            showApp(user);
+          }
+          // else stay on login screen
+        }).catch(() => {});
+      }
     })();
     // ========== END AUTH ==========
 
