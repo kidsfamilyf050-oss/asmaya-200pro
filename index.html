@@ -983,9 +983,9 @@
       </div>
       <button class="auth-btn" id="authSubmitBtn">Войти</button>
       <div style="text-align:center;margin-top:10px;display:flex;flex-direction:column;gap:6px">
-        <button type="button" onclick="showRegisterForm()" style="background:transparent;border:none;color:var(--blue-mid);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);text-decoration:underline;padding:0">📝 Зарегистрироваться</button>
-        <button type="button" onclick="showForgotForm()" style="background:transparent;border:none;color:#64748b;font-size:12px;cursor:pointer;font-family:var(--font);text-decoration:underline;padding:0">Забыл пароль</button>
-        <button type="button" onclick="enterDemo()" style="background:transparent;border:none;color:var(--blue-mid);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);text-decoration:underline;padding:0">Попробовать бесплатно (Демо)</button>
+        <button type="button" id="btnShowRegister" style="background:transparent;border:none;color:var(--blue-mid);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);text-decoration:underline;padding:0">📝 Зарегистрироваться</button>
+        <button type="button" id="btnShowForgot" style="background:transparent;border:none;color:#64748b;font-size:12px;cursor:pointer;font-family:var(--font);text-decoration:underline;padding:0">Забыл пароль</button>
+        <button type="button" id="btnEnterDemo" style="background:transparent;border:none;color:var(--blue-mid);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);text-decoration:underline;padding:0">Попробовать бесплатно (Демо)</button>
       </div>
       <div class="auth-error" id="authError">Неверный логин или пароль</div>
     </div>
@@ -4000,6 +4000,8 @@
       function showApp(user) {
         _currentUserLogin = user.login;
         document.getElementById('authOverlay').classList.add('hidden');
+        document.getElementById('registerOverlay').style.display = 'none';
+        document.getElementById('forgotOverlay').style.display = 'none';
         document.getElementById('topBar').classList.add('visible');
         document.getElementById('topBarName').textContent = user.login;
         if (user.role === 'admin') {
@@ -4042,6 +4044,7 @@
 
       // ── Регистрация ──────────────────────────────────────────────────────
       window.showRegisterForm = function() {
+        document.getElementById('forgotOverlay').style.display = 'none';
         document.getElementById('registerOverlay').style.display = 'flex';
         document.getElementById('regError').style.display = 'none';
         document.getElementById('regSuccess').style.display = 'none';
@@ -4085,6 +4088,7 @@
 
       // ── Забыл пароль ─────────────────────────────────────────────────────
       window.showForgotForm = function() {
+        document.getElementById('registerOverlay').style.display = 'none';
         document.getElementById('forgotOverlay').style.display = 'flex';
         document.getElementById('forgotError').style.display = 'none';
         document.getElementById('forgotSuccess').style.display = 'none';
@@ -4289,6 +4293,9 @@
 
       // Init — check existing session on server
       document.getElementById('authSubmitBtn').addEventListener('click', doLogin);
+      document.getElementById('btnShowRegister').addEventListener('click', function() { window.showRegisterForm && window.showRegisterForm(); });
+      document.getElementById('btnShowForgot').addEventListener('click', function() { window.showForgotForm && window.showForgotForm(); });
+      document.getElementById('btnEnterDemo').addEventListener('click', function() { window.enterDemo && window.enterDemo(); });
       document.getElementById('authPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
       document.getElementById('authLogin').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('authPass').focus(); });
 
