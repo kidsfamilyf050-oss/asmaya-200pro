@@ -30,7 +30,7 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@asmaya.kz';
 const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
 
-// Функция отправки письма через Gmail SMTP
+// Функция отправки письма через Gmail SMTP (порт 587 + STARTTLS)
 async function sendEmail({ to, subject, html }) {
   const GMAIL_USER = process.env.GMAIL_USER || '';
   const GMAIL_PASS = process.env.GMAIL_PASS || '';
@@ -43,61 +43,76 @@ async function sendEmail({ to, subject, html }) {
   return new Promise((resolve) => {
     const net = require('net');
     const tls = require('tls');
-    const encoded = Buffer.from(`\0${GMAIL_USER}\0${GMAIL_PASS}`).toString('base64');
-    const boundary = 'boundary_asmaya_' + Date.now();
+    const encoded = Buffer.from('\0' + GMAIL_USER + '\0' + GMAIL_PASS).toString('base64');
+    const boundary = 'b_' + Date.now();
     const rawEmail = [
-      `From: AsMaya 200PRO <${GMAIL_USER}>`,
-      `To: ${to}`,
-      `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`,
+      'From: AsMaya 200PRO <' + GMAIL_USER + '>',
+      'To: ' + to,
+      'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',
       'MIME-Version: 1.0',
-      `Content-Type: multipart/alternative; boundary="${boundary}"`,
+      'Content-Type: multipart/alternative; boundary="' + boundary + '"',
       '',
-      `--${boundary}`,
+      '--' + boundary,
       'Content-Type: text/html; charset=UTF-8',
       'Content-Transfer-Encoding: base64',
       '',
       Buffer.from(html).toString('base64'),
       '',
-      `--${boundary}--`
+      '--' + boundary + '--'
     ].join('\r\n');
 
+    let tlsSocket = null;
     let step = 0;
-    const next = (socket, msg) => {
-      const steps = [
-        () => socket.write('EHLO gmail.com\r\n'),
-        () => socket.write('AUTH PLAIN ' + encoded + '\r\n'),
-        () => socket.write('MAIL FROM:<' + GMAIL_USER + '>\r\n'),
-        () => socket.write('RCPT TO:<' + to + '>\r\n'),
-        () => socket.write('DATA\r\n'),
-        () => socket.write(rawEmail + '\r\n.\r\n'),
-        () => { socket.write('QUIT\r\n'); resolve(true); }
-      ];
+    let upgraded = false;
+
+    const sendCmd = (sock, cmd) => {
+      console.log('>>> ' + cmd.trim());
+      sock.write(cmd);
+    };
+
+    const handleData = (sock, data) => {
+      const msg = data.toString();
+      console.log('<<< ' + msg.trim());
       const code = parseInt(msg);
       if (code >= 400) {
-        console.error('❌ SMTP ошибка:', msg);
-        socket.destroy();
+        console.error('❌ SMTP ошибка ' + code + ': ' + msg.trim());
+        sock.destroy();
         resolve(false);
         return;
       }
-      if (step < steps.length) steps[step++]();
+      if (!upgraded) {
+        if (step === 0) { step++; sendCmd(sock, 'EHLO gmail.com\r\n'); }
+        else if (step === 1) { step++; sendCmd(sock, 'STARTTLS\r\n'); }
+        else if (step === 2) {
+          step++;
+          upgraded = true;
+          tlsSocket = tls.connect({ socket: sock, host: 'smtp.gmail.com' }, () => {
+            tlsSocket.on('data', d => handleData(tlsSocket, d));
+            sendCmd(tlsSocket, 'EHLO gmail.com\r\n');
+          });
+          tlsSocket.on('error', err => { console.error('❌ TLS:', err.message); resolve(false); });
+        }
+      } else {
+        if (step === 3) { step++; sendCmd(tlsSocket, 'AUTH PLAIN ' + encoded + '\r\n'); }
+        else if (step === 4) { step++; sendCmd(tlsSocket, 'MAIL FROM:<' + GMAIL_USER + '>\r\n'); }
+        else if (step === 5) { step++; sendCmd(tlsSocket, 'RCPT TO:<' + to + '>\r\n'); }
+        else if (step === 6) { step++; sendCmd(tlsSocket, 'DATA\r\n'); }
+        else if (step === 7) { step++; sendCmd(tlsSocket, rawEmail + '\r\n.\r\n'); }
+        else if (step === 8) {
+          step++;
+          console.log('✅ Письмо отправлено на ' + to);
+          sendCmd(tlsSocket, 'QUIT\r\n');
+          resolve(true);
+        }
+      }
     };
 
-    const socket = tls.connect({ host: 'smtp.gmail.com', port: 465 }, () => {
-      socket.on('data', d => {
-        const msg = d.toString();
-        console.log('SMTP:', msg.trim());
-        next(socket, msg);
-      });
+    const socket = net.connect({ host: 'smtp.gmail.com', port: 587 }, () => {
+      console.log('🔌 Подключено к smtp.gmail.com:587');
+      socket.on('data', d => handleData(socket, d));
     });
-    socket.on('error', err => {
-      console.error('❌ SMTP ошибка соединения:', err.message);
-      resolve(false);
-    });
-    socket.setTimeout(15000, () => {
-      console.error('❌ SMTP таймаут');
-      socket.destroy();
-      resolve(false);
-    });
+    socket.on('error', err => { console.error('❌ SMTP соединение:', err.message); resolve(false); });
+    socket.setTimeout(20000, () => { console.error('❌ SMTP таймаут'); socket.destroy(); resolve(false); });
   });
 }
 
