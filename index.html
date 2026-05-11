@@ -4148,29 +4148,29 @@
           const statusColor = item.status === 'approved' ? '#16a34a' : item.status === 'rejected' ? '#dc2626' : '#d97706';
           const statusLabel = item.status === 'approved' ? '✅ Одобрено' : item.status === 'rejected' ? '❌ Отклонено' : '⏳ Ожидает';
           div.style.cssText = 'border:1px solid #e2e8f0;border-radius:8px;padding:12px;background:#f8fafc';
-          div.innerHTML = \`
+          div.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
               <div>
-                <div style="font-weight:700;font-size:14px">\${item.login}</div>
-                <div style="font-size:12px;color:#64748b">\${item.email}</div>
-                \${item.full_name ? \`<div style="font-size:12px;color:#475569">\${item.full_name}</div>\` : ''}
-                <div style="font-size:11px;color:#94a3b8;margin-top:2px">\${item.created_at ? new Date(item.created_at).toLocaleString('ru') : ''}</div>
+                <div style="font-weight:700;font-size:14px">${item.login}</div>
+                <div style="font-size:12px;color:#64748b">${item.email}</div>
+                ${item.full_name ? `<div style="font-size:12px;color:#475569">${item.full_name}</div>` : ''}
+                <div style="font-size:11px;color:#94a3b8;margin-top:2px">${item.created_at ? new Date(item.created_at).toLocaleString('ru') : ''}</div>
               </div>
-              <span style="font-size:12px;font-weight:700;color:\${statusColor}">\${statusLabel}</span>
+              <span style="font-size:12px;font-weight:700;color:${statusColor}">${statusLabel}</span>
             </div>
-            \${item.status === 'pending' ? \`
+            ${item.status === 'pending' ? `
             <div style="display:flex;gap:8px;margin-top:10px">
-              <button onclick="approvePending(\${item.id})" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">✅ Одобрить</button>
-              <button onclick="rejectPending(\${item.id})" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">❌ Отклонить</button>
-            </div>\` : ''}
-          \`;
+              <button onclick="approvePending(${item.id})" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">✅ Одобрить</button>
+              <button onclick="rejectPending(${item.id})" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">❌ Отклонить</button>
+            </div>` : ''}
+          `;
           container.appendChild(div);
         });
       }
 
       window.approvePending = async function(id) {
         if (!confirm('Одобрить заявку? Пользователю придёт письмо.')) return;
-        const resp = await fetch(\`/api/pending/\${id}/approve\`, { method: 'POST', credentials: 'include' });
+        const resp = await fetch(`/api/pending/${id}/approve`, { method: 'POST', credentials: 'include' });
         const data = await resp.json().catch(() => ({}));
         const msg = document.getElementById('adminMsg');
         if (resp.ok) { msg.textContent = '✅ Заявка одобрена, письмо отправлено.'; renderPendingList(); }
@@ -4180,7 +4180,7 @@
       window.rejectPending = async function(id) {
         const reason = prompt('Причина отклонения (необязательно):');
         if (reason === null) return;
-        const resp = await fetch(\`/api/pending/\${id}/reject\`, {
+        const resp = await fetch(`/api/pending/${id}/reject`, {
           method: 'POST', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ reason })
