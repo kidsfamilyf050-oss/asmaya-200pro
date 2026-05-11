@@ -30,33 +30,51 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@asmaya.kz';
 const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
 
-// Функция отправки письма через Resend API
+// Функция отправки письма через Resend API (через https модуль Node.js)
 async function sendEmail({ to, subject, html }) {
   if (!RESEND_API_KEY) {
     console.warn('⚠️  RESEND_API_KEY не задан — письмо не отправлено');
     return false;
   }
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
+  return new Promise((resolve) => {
+    const https = require('https');
+    const body = JSON.stringify({ from: FROM_EMAIL, to, subject, html });
+    const options = {
+      hostname: 'api.resend.com',
+      path: '/emails',
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ from: FROM_EMAIL, to, subject, html })
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body)
+      }
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            console.log(`✅ Письмо отправлено на ${to}, id: ${json.id}`);
+            resolve(true);
+          } else {
+            console.error(`❌ Ошибка Resend (${res.statusCode}):`, json);
+            resolve(false);
+          }
+        } catch(e) {
+          console.error('❌ Ошибка парсинга ответа Resend:', e.message);
+          resolve(false);
+        }
+      });
     });
-    const data = await response.json();
-    if (response.ok) {
-      console.log(`✅ Письмо отправлено на ${to}`);
-      return true;
-    } else {
-      console.error('❌ Ошибка Resend:', data);
-      return false;
-    }
-  } catch (err) {
-    console.error('❌ Ошибка отправки письма:', err.message);
-    return false;
-  }
+    req.on('error', (err) => {
+      console.error('❌ Ошибка HTTPS запроса к Resend:', err.message);
+      resolve(false);
+    });
+    req.write(body);
+    req.end();
+  });
 }
 
 // ── База данных ──────────────────────────────────────────────────────────────
