@@ -30,89 +30,68 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@asmaya.kz';
 const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
 
-// Функция отправки письма через Gmail SMTP (порт 587 + STARTTLS)
+// Функция отправки письма через Mailjet HTTP API
 async function sendEmail({ to, subject, html }) {
-  const GMAIL_USER = process.env.GMAIL_USER || '';
-  const GMAIL_PASS = process.env.GMAIL_PASS || '';
-  console.log(`📧 Отправка письма на: ${to}`);
-  console.log(`   GMAIL_USER: ${GMAIL_USER || 'НЕ ЗАДАН'}`);
-  if (!GMAIL_USER || !GMAIL_PASS) {
-    console.warn('⚠️  GMAIL_USER или GMAIL_PASS не заданы');
+  const MJ_KEY = process.env.MJ_APIKEY || '';
+  const MJ_SECRET = process.env.MJ_SECRET || '';
+  const FROM_NAME = 'AsMaya 200PRO';
+  console.log(`📧 Отправка письма на: ${to}, тема: ${subject}`);
+  if (!MJ_KEY || !MJ_SECRET) {
+    console.warn('⚠️  MJ_APIKEY или MJ_SECRET не заданы');
     return false;
   }
   return new Promise((resolve) => {
-    const net = require('net');
-    const tls = require('tls');
-    const encoded = Buffer.from('\0' + GMAIL_USER + '\0' + GMAIL_PASS).toString('base64');
-    const boundary = 'b_' + Date.now();
-    const rawEmail = [
-      'From: AsMaya 200PRO <' + GMAIL_USER + '>',
-      'To: ' + to,
-      'Subject: =?UTF-8?B?' + Buffer.from(subject).toString('base64') + '?=',
-      'MIME-Version: 1.0',
-      'Content-Type: multipart/alternative; boundary="' + boundary + '"',
-      '',
-      '--' + boundary,
-      'Content-Type: text/html; charset=UTF-8',
-      'Content-Transfer-Encoding: base64',
-      '',
-      Buffer.from(html).toString('base64'),
-      '',
-      '--' + boundary + '--'
-    ].join('\r\n');
-
-    let tlsSocket = null;
-    let step = 0;
-    let upgraded = false;
-
-    const sendCmd = (sock, cmd) => {
-      console.log('>>> ' + cmd.trim());
-      sock.write(cmd);
-    };
-
-    const handleData = (sock, data) => {
-      const msg = data.toString();
-      console.log('<<< ' + msg.trim());
-      const code = parseInt(msg);
-      if (code >= 400) {
-        console.error('❌ SMTP ошибка ' + code + ': ' + msg.trim());
-        sock.destroy();
-        resolve(false);
-        return;
-      }
-      if (!upgraded) {
-        if (step === 0) { step++; sendCmd(sock, 'EHLO gmail.com\r\n'); }
-        else if (step === 1) { step++; sendCmd(sock, 'STARTTLS\r\n'); }
-        else if (step === 2) {
-          step++;
-          upgraded = true;
-          tlsSocket = tls.connect({ socket: sock, host: 'smtp.gmail.com' }, () => {
-            tlsSocket.on('data', d => handleData(tlsSocket, d));
-            sendCmd(tlsSocket, 'EHLO gmail.com\r\n');
-          });
-          tlsSocket.on('error', err => { console.error('❌ TLS:', err.message); resolve(false); });
-        }
-      } else {
-        if (step === 3) { step++; sendCmd(tlsSocket, 'AUTH PLAIN ' + encoded + '\r\n'); }
-        else if (step === 4) { step++; sendCmd(tlsSocket, 'MAIL FROM:<' + GMAIL_USER + '>\r\n'); }
-        else if (step === 5) { step++; sendCmd(tlsSocket, 'RCPT TO:<' + to + '>\r\n'); }
-        else if (step === 6) { step++; sendCmd(tlsSocket, 'DATA\r\n'); }
-        else if (step === 7) { step++; sendCmd(tlsSocket, rawEmail + '\r\n.\r\n'); }
-        else if (step === 8) {
-          step++;
-          console.log('✅ Письмо отправлено на ' + to);
-          sendCmd(tlsSocket, 'QUIT\r\n');
-          resolve(true);
-        }
-      }
-    };
-
-    const socket = net.connect({ host: 'smtp.gmail.com', port: 587 }, () => {
-      console.log('🔌 Подключено к smtp.gmail.com:587');
-      socket.on('data', d => handleData(socket, d));
+    const https = require('https');
+    const auth = Buffer.from(MJ_KEY + ':' + MJ_SECRET).toString('base64');
+    const payload = JSON.stringify({
+      Messages: [{
+        From: { Email: 'kidsfamilyf050@gmail.com', Name: FROM_NAME },
+        To: [{ Email: to }],
+        Subject: subject,
+        HTMLPart: html
+      }]
     });
-    socket.on('error', err => { console.error('❌ SMTP соединение:', err.message); resolve(false); });
-    socket.setTimeout(20000, () => { console.error('❌ SMTP таймаут'); socket.destroy(); resolve(false); });
+    const options = {
+      hostname: 'api.mailjet.com',
+      path: '/v3.1/send',
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + auth,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          console.log('Mailjet ответ:', JSON.stringify(json));
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            console.log(`✅ Письмо отправлено на ${to}`);
+            resolve(true);
+          } else {
+            console.error(`❌ Ошибка Mailjet (${res.statusCode}):`, json);
+            resolve(false);
+          }
+        } catch(e) {
+          console.error('❌ Ошибка парсинга ответа:', e.message, data);
+          resolve(false);
+        }
+      });
+    });
+    req.on('error', err => {
+      console.error('❌ HTTPS ошибка:', err.message);
+      resolve(false);
+    });
+    req.setTimeout(15000, () => {
+      console.error('❌ Таймаут запроса');
+      req.destroy();
+      resolve(false);
+    });
+    req.write(payload);
+    req.end();
   });
 }
 
