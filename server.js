@@ -32,6 +32,9 @@ const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
 
 // Функция отправки письма через Resend API (через https модуль Node.js)
 async function sendEmail({ to, subject, html }) {
+  console.log(`📧 Попытка отправить письмо на: ${to}, тема: ${subject}`);
+  console.log(`   FROM_EMAIL: ${FROM_EMAIL}`);
+  console.log(`   RESEND_API_KEY: ${RESEND_API_KEY ? RESEND_API_KEY.slice(0,10) + '...' : 'НЕ ЗАДАН'}`);
   if (!RESEND_API_KEY) {
     console.warn('⚠️  RESEND_API_KEY не задан — письмо не отправлено');
     return false;
@@ -251,6 +254,18 @@ app.post('/api/register', async (req, res) => {
   const existsUser = dbGet('SELECT id FROM users WHERE login = ?', [loginTrimmed]);
   if (existsUser) {
     return res.status(409).json({ error: 'Этот логин уже занят.' });
+  }
+
+  // Проверяем — нет ли уже такого email среди активных пользователей
+  const existsEmail = dbGet('SELECT id FROM users WHERE LOWER(email) = ?', [emailTrimmed]);
+  if (existsEmail) {
+    return res.status(409).json({ error: 'Этот email уже зарегистрирован.' });
+  }
+
+  // Проверяем — нет ли уже заявки с таким email
+  const existsPendingEmail = dbGet('SELECT id, status FROM pending_users WHERE LOWER(email) = ? AND login != ?', [emailTrimmed, loginTrimmed]);
+  if (existsPendingEmail && existsPendingEmail.status === 'pending') {
+    return res.status(409).json({ error: 'Заявка с этим email уже на рассмотрении.' });
   }
 
   // Проверяем — нет ли уже заявки с таким логином
@@ -483,9 +498,8 @@ app.post('/api/forgot-password', async (req, res) => {
   const emailTrimmed = String(email).trim().toLowerCase();
   const user = dbGet('SELECT * FROM users WHERE LOWER(email) = ?', [emailTrimmed]);
 
-  // Всегда отвечаем успехом — чтобы не раскрывать существование email
   if (!user) {
-    return res.json({ ok: true, message: 'Если такой email зарегистрирован, письмо будет отправлено.' });
+    return res.status(404).json({ error: 'Пользователь с таким email не найден.' });
   }
 
   // Удаляем старые токены этого пользователя
@@ -501,7 +515,7 @@ app.post('/api/forgot-password', async (req, res) => {
 
   const resetLink = `${APP_URL}/reset-password?token=${token}`;
 
-  await sendEmail({
+  const sent = await sendEmail({
     to: emailTrimmed,
     subject: 'Сброс пароля — AsMaya_200PRO',
     html: `
@@ -523,7 +537,11 @@ app.post('/api/forgot-password', async (req, res) => {
     `
   });
 
-  res.json({ ok: true, message: 'Если такой email зарегистрирован, письмо будет отправлено.' });
+  if (sent) {
+    res.json({ ok: true, message: 'Ссылка для сброса пароля отправлена на ваш email.' });
+  } else {
+    res.status(500).json({ error: 'Не удалось отправить письмо. Попробуйте позже.' });
+  }
 });
 
 // Страница сброса пароля (GET)
