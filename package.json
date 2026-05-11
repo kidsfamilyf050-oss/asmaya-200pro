@@ -1,0 +1,15 @@
+{
+  "name": "asmaya-200pro-server",
+  "version": "1.0.0",
+  "description": "Сервер для AsMaya_200PRO — расчёт налогов РК",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.18.3",
+    "express-session": "^1.18.0",
+    "sql.js": "^1.10.2"
+  }
+}
