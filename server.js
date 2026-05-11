@@ -254,42 +254,55 @@ app.post('/api/register', async (req, res) => {
   );
   saveDb();
 
-  // Уведомляем пользователя
+  // Уведомляем пользователя — с логином, паролем и просьбой ожидать
   await sendEmail({
     to: emailTrimmed,
-    subject: 'Заявка на регистрацию в AsMaya_200PRO получена',
+    subject: 'Заявка на регистрацию получена — AsMaya_200PRO',
     html: `
-      <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto">
-        <h2 style="color:#1e40af">AsMaya_200PRO</h2>
+      <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:12px">
+        <h2 style="color:#1e40af;margin-top:0">AsMaya_200PRO</h2>
         <p>Здравствуйте, <strong>${loginTrimmed}</strong>!</p>
-        <p>Ваша заявка на регистрацию получена и находится на рассмотрении администратора.</p>
-        <p>Когда администратор одобрит вашу заявку, вы получите письмо на этот адрес.</p>
-        <hr style="border:1px solid #e5e7eb">
-        <p style="color:#6b7280;font-size:12px">AsMaya_200PRO — расчёт налогов РК</p>
+        <p>Ваша заявка на регистрацию успешно получена. Пожалуйста, <strong>ожидайте подтверждения от администратора</strong>.</p>
+        <p>Как только администратор одобрит заявку, вы получите письмо и сможете войти в систему.</p>
+        <div style="background:#f1f5f9;border-radius:8px;padding:16px;margin:20px 0">
+          <p style="margin:0 0 8px;font-weight:700;color:#374151">Ваши данные для входа:</p>
+          <p style="margin:4px 0">🔑 <strong>Логин:</strong> ${loginTrimmed}</p>
+          <p style="margin:4px 0">🔒 <strong>Пароль:</strong> ${String(password)}</p>
+        </div>
+        <p style="color:#dc2626;font-size:13px">⚠️ Сохраните эти данные — пароль больше нигде не отображается.</p>
+        <hr style="border:1px solid #e5e7eb;margin:20px 0">
+        <p style="color:#6b7280;font-size:12px;margin:0">AsMaya_200PRO — расчёт налогов РК</p>
       </div>
     `
   });
 
-  // Уведомляем администраторов
+  // Уведомляем администратора Майнур напрямую + других админов с email
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';
+  const adminEmails = new Set();
+  if (ADMIN_EMAIL) adminEmails.add(ADMIN_EMAIL);
   const admins = dbAll('SELECT email FROM users WHERE role = ? AND email != ?', ['admin', '']);
-  for (const admin of admins) {
+  for (const admin of admins) adminEmails.add(admin.email);
+
+  for (const adminEmail of adminEmails) {
     await sendEmail({
-      to: admin.email,
+      to: adminEmail,
       subject: `Новая заявка на регистрацию: ${loginTrimmed}`,
       html: `
-        <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto">
-          <h2 style="color:#1e40af">AsMaya_200PRO</h2>
+        <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:12px">
+          <h2 style="color:#1e40af;margin-top:0">AsMaya_200PRO</h2>
           <p>Поступила новая заявка на регистрацию:</p>
-          <ul>
-            <li><strong>Логин:</strong> ${loginTrimmed}</li>
-            <li><strong>Email:</strong> ${emailTrimmed}</li>
-            <li><strong>Имя:</strong> ${fullName || '—'}</li>
-          </ul>
+          <div style="background:#f1f5f9;border-radius:8px;padding:16px;margin:16px 0">
+            <p style="margin:4px 0">👤 <strong>Логин:</strong> ${loginTrimmed}</p>
+            <p style="margin:4px 0">📧 <strong>Email:</strong> ${emailTrimmed}</p>
+            <p style="margin:4px 0">📝 <strong>Имя:</strong> ${fullName || '—'}</p>
+          </div>
           <p>
-            <a href="${APP_URL}" style="background:#1e40af;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">
+            <a href="${APP_URL}" style="background:#1e40af;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:700">
               Открыть панель управления
             </a>
           </p>
+          <hr style="border:1px solid #e5e7eb;margin:20px 0">
+          <p style="color:#6b7280;font-size:12px;margin:0">AsMaya_200PRO — расчёт налогов РК</p>
         </div>
       `
     });
