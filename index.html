@@ -982,10 +982,64 @@
         <input id="authPass" type="password" placeholder="Пароль" autocomplete="current-password" />
       </div>
       <button class="auth-btn" id="authSubmitBtn">Войти</button>
-      <div style="text-align:center;margin-top:10px">
+      <div style="text-align:center;margin-top:10px;display:flex;flex-direction:column;gap:6px">
+        <button type="button" onclick="showRegisterForm()" style="background:transparent;border:none;color:var(--blue-mid);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);text-decoration:underline;padding:0">📝 Зарегистрироваться</button>
+        <button type="button" onclick="showForgotForm()" style="background:transparent;border:none;color:#64748b;font-size:12px;cursor:pointer;font-family:var(--font);text-decoration:underline;padding:0">Забыл пароль</button>
         <button type="button" onclick="enterDemo()" style="background:transparent;border:none;color:var(--blue-mid);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);text-decoration:underline;padding:0">Попробовать бесплатно (Демо)</button>
       </div>
       <div class="auth-error" id="authError">Неверный логин или пароль</div>
+    </div>
+  </div>
+
+  <!-- ========== REGISTER OVERLAY ========== -->
+  <div id="registerOverlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:1001;justify-content:center;align-items:center">
+    <div class="auth-box" style="max-width:380px">
+      <div class="auth-title" style="font-size:20px">📝 Регистрация</div>
+      <div class="auth-sub">Заполните форму — администратор рассмотрит заявку</div>
+      <div class="auth-field">
+        <label for="regLogin">Логин</label>
+        <input id="regLogin" type="text" placeholder="Придумайте логин" autocomplete="username" />
+      </div>
+      <div class="auth-field">
+        <label for="regPass">Пароль</label>
+        <input id="regPass" type="password" placeholder="Минимум 6 символов" autocomplete="new-password" />
+      </div>
+      <div class="auth-field">
+        <label for="regEmail">Email <span style="color:#dc2626">*</span></label>
+        <input id="regEmail" type="email" placeholder="Ваш email для уведомлений" autocomplete="email" />
+      </div>
+      <div class="auth-field">
+        <label for="regName">Полное имя (необязательно)</label>
+        <input id="regName" type="text" placeholder="ФИО" />
+      </div>
+      <button class="auth-btn" id="regSubmitBtn" onclick="doRegister()" style="background:#16a34a">Отправить заявку</button>
+      <div style="text-align:center;margin-top:10px">
+        <button type="button" onclick="hideRegisterForm()" style="background:transparent;border:none;color:#64748b;font-size:12px;cursor:pointer;font-family:var(--font);text-decoration:underline;padding:0">← Назад к входу</button>
+      </div>
+      <div class="auth-error" id="regError"></div>
+      <div id="regSuccess" style="display:none;background:#dcfce7;color:#166534;border-radius:8px;padding:12px;margin-top:12px;font-size:13px;text-align:center"></div>
+    </div>
+  </div>
+
+  <!-- ========== FORGOT PASSWORD OVERLAY ========== -->
+  <div id="forgotOverlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:1001;justify-content:center;align-items:center">
+    <div class="auth-box" style="max-width:360px">
+      <div class="auth-title" style="font-size:20px">🔑 Забыл пароль</div>
+      <div class="auth-sub">Введите email — пришлём ссылку для сброса</div>
+      <div class="auth-field">
+        <label for="forgotEmail">Email</label>
+        <input id="forgotEmail" type="email" placeholder="Ваш email" autocomplete="email" />
+      </div>
+      <button class="auth-btn" id="forgotSubmitBtn" onclick="doForgot()">Отправить ссылку</button>
+      <div style="text-align:center;margin-top:10px">
+        <button type="button" onclick="hideForgotForm()" style="background:transparent;border:none;color:#64748b;font-size:12px;cursor:pointer;font-family:var(--font);text-decoration:underline;padding:0">← Назад к входу</button>
+      </div>
+      <div class="auth-error" id="forgotError"></div>
+      <div id="forgotSuccess" style="display:none;background:#dcfce7;color:#166534;border-radius:8px;padding:12px;margin-top:12px;font-size:13px;text-align:center"></div>
+    </div>
+  </div>
+
+  <!-- PLACEHOLDER closing tag for auth overlay (moved above) -->
     </div>
   </div>
 
@@ -1039,14 +1093,24 @@
 
   <!-- ========== ADMIN PANEL ========== -->
   <div id="adminPanel">
-    <div class="admin-box">
+    <div class="admin-box" style="max-width:640px">
       <h2>⚙️ Управление пользователями</h2>
-      <div class="user-list" id="userList"></div>
-      <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#475569;">Добавить пользователя:</div>
-      <div class="add-user-form">
-        <input id="newUserLogin" type="text" placeholder="Логин" />
-        <input id="newUserPass" type="password" placeholder="Пароль" />
-        <button class="add-user-btn" onclick="addUser()">+ Добавить</button>
+      <div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:2px solid #e2e8f0">
+        <button onclick="adminTab('users')" id="tabUsers" style="background:none;border:none;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;border-bottom:2px solid #2563eb;color:#2563eb;margin-bottom:-2px;font-family:var(--font)">👥 Пользователи</button>
+        <button onclick="adminTab('pending')" id="tabPending" style="background:none;border:none;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b;font-family:var(--font)">📋 Заявки <span id="pendingBadge" style="background:#dc2626;color:#fff;border-radius:10px;padding:1px 6px;font-size:11px;margin-left:4px;display:none">0</span></button>
+      </div>
+      <div id="panelUsers">
+        <div class="user-list" id="userList"></div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#475569;">Добавить пользователя вручную:</div>
+        <div class="add-user-form">
+          <input id="newUserLogin" type="text" placeholder="Логин" />
+          <input id="newUserPass" type="password" placeholder="Пароль" />
+          <button class="add-user-btn" onclick="addUser()">+ Добавить</button>
+        </div>
+      </div>
+      <div id="panelPending" style="display:none">
+        <div id="pendingList" style="display:flex;flex-direction:column;gap:10px"></div>
+        <div id="pendingEmpty" style="text-align:center;color:#94a3b8;padding:24px;display:none">Нет ожидающих заявок</div>
       </div>
       <div class="admin-msg" id="adminMsg"></div>
       <button class="admin-close-btn" onclick="closeAdminPanel()">Закрыть</button>
@@ -3975,10 +4039,173 @@
         location.reload();
       };
 
+
+      // ── Регистрация ──────────────────────────────────────────────────────
+      window.showRegisterForm = function() {
+        document.getElementById('registerOverlay').style.display = 'flex';
+        document.getElementById('regError').style.display = 'none';
+        document.getElementById('regSuccess').style.display = 'none';
+        document.getElementById('regLogin').value = '';
+        document.getElementById('regPass').value = '';
+        document.getElementById('regEmail').value = '';
+        document.getElementById('regName').value = '';
+      };
+      window.hideRegisterForm = function() {
+        document.getElementById('registerOverlay').style.display = 'none';
+      };
+      window.doRegister = async function() {
+        const login = document.getElementById('regLogin').value.trim();
+        const pass = document.getElementById('regPass').value;
+        const email = document.getElementById('regEmail').value.trim();
+        const fullName = document.getElementById('regName').value.trim();
+        const errEl = document.getElementById('regError');
+        const okEl = document.getElementById('regSuccess');
+        const btn = document.getElementById('regSubmitBtn');
+        errEl.style.display = 'none';
+        okEl.style.display = 'none';
+        if (!login || !pass || !email) { errEl.textContent = 'Заполните логин, пароль и email.'; errEl.style.display = 'block'; return; }
+        if (pass.length < 6) { errEl.textContent = 'Пароль должен быть не менее 6 символов.'; errEl.style.display = 'block'; return; }
+        btn.disabled = true; btn.textContent = 'Отправляем...';
+        const resp = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ login, password: pass, email, fullName })
+        });
+        const data = await resp.json().catch(() => ({}));
+        btn.disabled = false; btn.textContent = 'Отправить заявку';
+        if (resp.ok) {
+          okEl.textContent = '✅ ' + (data.message || 'Заявка отправлена! Ожидайте подтверждения.');
+          okEl.style.display = 'block';
+          setTimeout(() => hideRegisterForm(), 4000);
+        } else {
+          errEl.textContent = data.error || 'Ошибка. Попробуйте ещё раз.';
+          errEl.style.display = 'block';
+        }
+      };
+
+      // ── Забыл пароль ─────────────────────────────────────────────────────
+      window.showForgotForm = function() {
+        document.getElementById('forgotOverlay').style.display = 'flex';
+        document.getElementById('forgotError').style.display = 'none';
+        document.getElementById('forgotSuccess').style.display = 'none';
+        document.getElementById('forgotEmail').value = '';
+      };
+      window.hideForgotForm = function() {
+        document.getElementById('forgotOverlay').style.display = 'none';
+      };
+      window.doForgot = async function() {
+        const email = document.getElementById('forgotEmail').value.trim();
+        const errEl = document.getElementById('forgotError');
+        const okEl = document.getElementById('forgotSuccess');
+        const btn = document.getElementById('forgotSubmitBtn');
+        errEl.style.display = 'none'; okEl.style.display = 'none';
+        if (!email) { errEl.textContent = 'Введите email.'; errEl.style.display = 'block'; return; }
+        btn.disabled = true; btn.textContent = 'Отправляем...';
+        const resp = await fetch('/api/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await resp.json().catch(() => ({}));
+        btn.disabled = false; btn.textContent = 'Отправить ссылку';
+        if (resp.ok) {
+          okEl.textContent = '✅ ' + (data.message || 'Если email найден, письмо отправлено.');
+          okEl.style.display = 'block';
+        } else {
+          errEl.textContent = data.error || 'Ошибка. Попробуйте ещё раз.';
+          errEl.style.display = 'block';
+        }
+      };
+
+      // ── Вкладки админ-панели ─────────────────────────────────────────────
+      window.adminTab = function(tab) {
+        const isUsers = tab === 'users';
+        document.getElementById('panelUsers').style.display = isUsers ? '' : 'none';
+        document.getElementById('panelPending').style.display = isUsers ? 'none' : '';
+        document.getElementById('tabUsers').style.cssText = isUsers
+          ? 'background:none;border:none;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;border-bottom:2px solid #2563eb;color:#2563eb;margin-bottom:-2px;font-family:var(--font)'
+          : 'background:none;border:none;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b;font-family:var(--font)';
+        document.getElementById('tabPending').style.cssText = isUsers
+          ? 'background:none;border:none;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b;font-family:var(--font)'
+          : 'background:none;border:none;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;border-bottom:2px solid #2563eb;color:#2563eb;margin-bottom:-2px;font-family:var(--font)';
+        if (!isUsers) renderPendingList();
+      };
+
+      async function renderPendingList() {
+        const resp = await fetch('/api/pending', { credentials: 'include' });
+        const list = resp.ok ? await resp.json() : [];
+        const container = document.getElementById('pendingList');
+        const empty = document.getElementById('pendingEmpty');
+        const badge = document.getElementById('pendingBadge');
+        const pending = list.filter(x => x.status === 'pending');
+        badge.textContent = pending.length;
+        badge.style.display = pending.length ? 'inline' : 'none';
+        container.innerHTML = '';
+        if (list.length === 0) { empty.style.display = ''; return; }
+        empty.style.display = 'none';
+        list.forEach(item => {
+          const div = document.createElement('div');
+          const statusColor = item.status === 'approved' ? '#16a34a' : item.status === 'rejected' ? '#dc2626' : '#d97706';
+          const statusLabel = item.status === 'approved' ? '✅ Одобрено' : item.status === 'rejected' ? '❌ Отклонено' : '⏳ Ожидает';
+          div.style.cssText = 'border:1px solid #e2e8f0;border-radius:8px;padding:12px;background:#f8fafc';
+          div.innerHTML = \`
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+              <div>
+                <div style="font-weight:700;font-size:14px">\${item.login}</div>
+                <div style="font-size:12px;color:#64748b">\${item.email}</div>
+                \${item.full_name ? \`<div style="font-size:12px;color:#475569">\${item.full_name}</div>\` : ''}
+                <div style="font-size:11px;color:#94a3b8;margin-top:2px">\${item.created_at ? new Date(item.created_at).toLocaleString('ru') : ''}</div>
+              </div>
+              <span style="font-size:12px;font-weight:700;color:\${statusColor}">\${statusLabel}</span>
+            </div>
+            \${item.status === 'pending' ? \`
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button onclick="approvePending(\${item.id})" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">✅ Одобрить</button>
+              <button onclick="rejectPending(\${item.id})" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">❌ Отклонить</button>
+            </div>\` : ''}
+          \`;
+          container.appendChild(div);
+        });
+      }
+
+      window.approvePending = async function(id) {
+        if (!confirm('Одобрить заявку? Пользователю придёт письмо.')) return;
+        const resp = await fetch(\`/api/pending/\${id}/approve\`, { method: 'POST', credentials: 'include' });
+        const data = await resp.json().catch(() => ({}));
+        const msg = document.getElementById('adminMsg');
+        if (resp.ok) { msg.textContent = '✅ Заявка одобрена, письмо отправлено.'; renderPendingList(); }
+        else { msg.textContent = data.error || 'Ошибка.'; }
+      };
+
+      window.rejectPending = async function(id) {
+        const reason = prompt('Причина отклонения (необязательно):');
+        if (reason === null) return;
+        const resp = await fetch(\`/api/pending/\${id}/reject\`, {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason })
+        });
+        const data = await resp.json().catch(() => ({}));
+        const msg = document.getElementById('adminMsg');
+        if (resp.ok) { msg.textContent = '❌ Заявка отклонена, письмо отправлено.'; renderPendingList(); }
+        else { msg.textContent = data.error || 'Ошибка.'; }
+      };
+
       window.openAdminPanel = function() {
         renderUserList();
+        loadPendingCount();
         document.getElementById('adminPanel').classList.add('visible');
       };
+
+      async function loadPendingCount() {
+        const resp = await fetch('/api/pending', { credentials: 'include' });
+        if (!resp.ok) return;
+        const list = await resp.json();
+        const count = list.filter(x => x.status === 'pending').length;
+        const badge = document.getElementById('pendingBadge');
+        badge.textContent = count;
+        badge.style.display = count ? 'inline' : 'none';
+      }
       window.closeAdminPanel = function() {
         document.getElementById('adminPanel').classList.remove('visible');
         document.getElementById('adminMsg').textContent = '';
