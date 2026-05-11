@@ -21,7 +21,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ── База данных ──────────────────────────────────────────────────────────────
-const DB_PATH = path.join(__dirname, 'data.sqlite');
+const DB_PATH = '/app/data.sqlite';
 
 let db; // будет инициализирована асинхронно
 
