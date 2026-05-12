@@ -30,33 +30,28 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@asmaya.kz';
 const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
 
-// Функция отправки письма через Mailjet HTTP API
+// Функция отправки письма через Resend API
 async function sendEmail({ to, subject, html }) {
-  const MJ_KEY = process.env.MJ_APIKEY || '';
-  const MJ_SECRET = process.env.MJ_SECRET || '';
-  const FROM_NAME = 'AsMaya 200PRO';
-  console.log(`📧 Отправка письма на: ${to}, тема: ${subject}`);
-  if (!MJ_KEY || !MJ_SECRET) {
-    console.warn('⚠️  MJ_APIKEY или MJ_SECRET не заданы');
+  const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+  console.log(`📧 Отправка письма на: ${to}`);
+  if (!RESEND_API_KEY) {
+    console.warn('⚠️  RESEND_API_KEY не задан');
     return false;
   }
   return new Promise((resolve) => {
     const https = require('https');
-    const auth = Buffer.from(MJ_KEY + ':' + MJ_SECRET).toString('base64');
     const payload = JSON.stringify({
-      Messages: [{
-        From: { Email: 'kidsfamilyf050@gmail.com', Name: FROM_NAME },
-        To: [{ Email: to }],
-        Subject: subject,
-        HTMLPart: html
-      }]
+      from: FROM_EMAIL,
+      to: [to],
+      subject: subject,
+      html: html
     });
     const options = {
-      hostname: 'api.mailjet.com',
-      path: '/v3.1/send',
+      hostname: 'api.resend.com',
+      path: '/emails',
       method: 'POST',
       headers: {
-        'Authorization': 'Basic ' + auth,
+        'Authorization': 'Bearer ' + RESEND_API_KEY,
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(payload)
       }
@@ -67,16 +62,16 @@ async function sendEmail({ to, subject, html }) {
       res.on('end', () => {
         try {
           const json = JSON.parse(data);
-          console.log('Mailjet ответ:', JSON.stringify(json));
+          console.log('Resend ответ:', JSON.stringify(json));
           if (res.statusCode >= 200 && res.statusCode < 300) {
             console.log(`✅ Письмо отправлено на ${to}`);
             resolve(true);
           } else {
-            console.error(`❌ Ошибка Mailjet (${res.statusCode}):`, json);
+            console.error(`❌ Ошибка Resend (${res.statusCode}):`, json);
             resolve(false);
           }
         } catch(e) {
-          console.error('❌ Ошибка парсинга ответа:', e.message, data);
+          console.error('❌ Ошибка парсинга:', e.message);
           resolve(false);
         }
       });
@@ -86,7 +81,7 @@ async function sendEmail({ to, subject, html }) {
       resolve(false);
     });
     req.setTimeout(15000, () => {
-      console.error('❌ Таймаут запроса');
+      console.error('❌ Таймаут');
       req.destroy();
       resolve(false);
     });
