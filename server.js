@@ -297,25 +297,147 @@ app.post('/api/register', async (req, res) => {
   );
   saveDb();
 
-  // Уведомляем пользователя — с логином, паролем и просьбой ожидать
+  // Уведомляем пользователя — красивое письмо с логином, паролем и статусом ожидания
   await sendEmail({
     to: emailTrimmed,
-    subject: 'Заявка на регистрацию получена — AsMaya_200PRO',
+    subject: '✅ Заявка получена — AsMaya_200PRO',
     html: `
-      <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:12px">
-        <h2 style="color:#1e40af;margin-top:0">AsMaya_200PRO</h2>
-        <p>Здравствуйте, <strong>${loginTrimmed}</strong>!</p>
-        <p>Ваша заявка на регистрацию успешно получена. Пожалуйста, <strong>ожидайте подтверждения от администратора</strong>.</p>
-        <p>Как только администратор одобрит заявку, вы получите письмо и сможете войти в систему.</p>
-        <div style="background:#f1f5f9;border-radius:8px;padding:16px;margin:20px 0">
-          <p style="margin:0 0 8px;font-weight:700;color:#374151">Ваши данные для входа:</p>
-          <p style="margin:4px 0">🔑 <strong>Логин:</strong> ${loginTrimmed}</p>
-          <p style="margin:4px 0">🔒 <strong>Пароль:</strong> ${String(password)}</p>
-        </div>
-        <p style="color:#dc2626;font-size:13px">⚠️ Сохраните эти данные — пароль больше нигде не отображается.</p>
-        <hr style="border:1px solid #e5e7eb;margin:20px 0">
-        <p style="color:#6b7280;font-size:12px;margin:0">AsMaya_200PRO — расчёт налогов РК</p>
-      </div>
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="UTF-8"></head>
+      <body style="margin:0;padding:0;background:#f0f4f8;font-family:Arial,sans-serif">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:40px 20px">
+          <tr><td align="center">
+            <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+              
+              <!-- Шапка -->
+              <tr>
+                <td style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);padding:36px 40px;text-align:center">
+                  <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:800;letter-spacing:1px">AsMaya_200PRO</h1>
+                  <p style="margin:8px 0 0;color:#93c5fd;font-size:14px">Расчёт налогов Республики Казахстан</p>
+                </td>
+              </tr>
+
+              <!-- Статус -->
+              <tr>
+                <td style="padding:32px 40px 0">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:16px 20px;text-align:center">
+                        <p style="margin:0;font-size:15px;color:#854d0e;font-weight:600">⏳ Заявка на рассмотрении</p>
+                        <p style="margin:6px 0 0;font-size:13px;color:#92400e">После проверки оплаты ваш аккаунт будет активирован</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Приветствие -->
+              <tr>
+                <td style="padding:28px 40px 0">
+                  <p style="margin:0;font-size:16px;color:#1e293b">Здравствуйте, <strong>${loginTrimmed}</strong>!</p>
+                  <p style="margin:12px 0 0;font-size:14px;color:#475569;line-height:1.6">
+                    Ваша заявка на регистрацию в системе <strong>AsMaya_200PRO</strong> успешно получена. 
+                    Администратор рассмотрит её в ближайшее время.
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Данные для входа -->
+              <tr>
+                <td style="padding:24px 40px 0">
+                  <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#1e293b">Ваши данные для входа:</p>
+                  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
+                    <tr>
+                      <td style="padding:14px 20px;border-bottom:1px solid #e2e8f0">
+                        <span style="font-size:13px;color:#64748b">🔑 Логин</span>
+                        <span style="float:right;font-size:14px;font-weight:700;color:#1e293b">${loginTrimmed}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:14px 20px">
+                        <span style="font-size:13px;color:#64748b">🔒 Пароль</span>
+                        <span style="float:right;font-size:14px;font-weight:700;color:#1e293b;font-family:monospace">${String(password)}</span>
+                      </td>
+                    </tr>
+                  </table>
+                  <p style="margin:10px 0 0;font-size:12px;color:#ef4444">⚠️ Сохраните эти данные — пароль больше нигде не отображается.</p>
+                </td>
+              </tr>
+
+              <!-- Шаги -->
+              <tr>
+                <td style="padding:24px 40px 0">
+                  <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#1e293b">Что будет дальше:</p>
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding:8px 0">
+                        <table cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td style="width:28px;height:28px;background:#dbeafe;border-radius:50%;text-align:center;vertical-align:middle">
+                              <span style="font-size:12px;font-weight:700;color:#1d4ed8">1</span>
+                            </td>
+                            <td style="padding-left:12px;font-size:13px;color:#475569">Администратор проверит вашу заявку и оплату</td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:8px 0">
+                        <table cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td style="width:28px;height:28px;background:#dbeafe;border-radius:50%;text-align:center;vertical-align:middle">
+                              <span style="font-size:12px;font-weight:700;color:#1d4ed8">2</span>
+                            </td>
+                            <td style="padding-left:12px;font-size:13px;color:#475569">Вы получите письмо об активации аккаунта</td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:8px 0">
+                        <table cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td style="width:28px;height:28px;background:#dbeafe;border-radius:50%;text-align:center;vertical-align:middle">
+                              <span style="font-size:12px;font-weight:700;color:#1d4ed8">3</span>
+                            </td>
+                            <td style="padding-left:12px;font-size:13px;color:#475569">Войдите с вашим логином и паролем</td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Кнопка -->
+              <tr>
+                <td style="padding:28px 40px">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td align="center">
+                        <a href="${APP_URL}" style="display:inline-block;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:700;letter-spacing:0.5px">
+                          Перейти на сайт →
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- Подвал -->
+              <tr>
+                <td style="background:#f8fafc;padding:20px 40px;border-top:1px solid #e2e8f0;text-align:center">
+                  <p style="margin:0;font-size:12px;color:#94a3b8">© 2026 AsMaya_200PRO — Расчёт налогов РК</p>
+                  <p style="margin:4px 0 0;font-size:11px;color:#cbd5e1">Если вы не подавали заявку, просто проигнорируйте это письмо</p>
+                </td>
+              </tr>
+
+            </table>
+          </td></tr>
+        </table>
+      </body>
+      </html>
     `
   });
 
